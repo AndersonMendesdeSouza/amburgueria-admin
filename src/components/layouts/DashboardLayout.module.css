@@ -1,6 +1,6 @@
 .container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   background-color: #181818;
 }
 
@@ -13,5 +13,4 @@
 .content {
   flex: 1;
   padding: 24px;
-  color: #fff;
 }

@@ -38,7 +38,7 @@ export const ProductService = {
     });
 
     if (files?.length) {
-      files.forEach((file) => formData.append("files", file));
+      files.forEach((file) => formData.append("images", file));
     }
 
     const response = await api.post<ProductResponse>(API_URL, formData, {

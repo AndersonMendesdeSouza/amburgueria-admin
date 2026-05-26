@@ -34,12 +34,20 @@ export function OrderCard({
     currency: "BRL",
   });
 
-  const statusClass =
-    {
-      [OrderStatusEnum.NEW]: "btnNew",
-      [OrderStatusEnum.ON_ROUTE]: "btnOnRoute",
-      [OrderStatusEnum.PREPARING]: "btnPreparing",
-    }[status] ?? "btnDefault";
+  const statusClassByStatus: Partial<Record<OrderStatusEnum, string>> = {
+    [OrderStatusEnum.RECEIVED]: "btnNew",
+    [OrderStatusEnum.ON_ROUTE]: "btnOnRoute",
+    [OrderStatusEnum.PREPARING]: "btnPreparing",
+  };
+
+  const actionLabelByStatus: Partial<Record<OrderStatusEnum, string>> = {
+    [OrderStatusEnum.RECEIVED]: "Aceitar",
+    [OrderStatusEnum.PREPARING]: "Finalizar",
+    [OrderStatusEnum.ON_ROUTE]: "Concluir",
+  };
+
+  const statusClass = statusClassByStatus[status] ?? "btnDefault";
+  const actionLabel = actionLabelByStatus[status];
 
   const navigate = useNavigate();
   return (
@@ -69,16 +77,17 @@ export function OrderCard({
       <div className={styles.footer}>
         <div className={styles.price}>{price}</div>
 
-        <button className={styles[statusClass]} onClick={onAccept}>
-          {status === OrderStatusEnum.NEW
-            ? "Aceitar"
-            : status === OrderStatusEnum.PREPARING
-              ? "Finalizar"
-              : status === OrderStatusEnum.ON_ROUTE
-                ? "Concluir"
-                : ""}{" "}
-          <FiChevronRight className={styles.acceptIcon} />
-        </button>
+        {actionLabel && (
+          <button
+            className={styles[statusClass]}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAccept?.();
+            }}
+          >
+            {actionLabel} <FiChevronRight className={styles.acceptIcon} />
+          </button>
+        )}
       </div>
     </div>
   );

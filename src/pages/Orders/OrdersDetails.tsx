@@ -1,130 +1,188 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import styles from "./OrderDetails.module.css";
 import Colors from "../../themes/Colors";
-import { useNavigate } from "react-router-dom";
+import { OrderService } from "../../service/order.service";
+import type { OrderResponseDto } from "../../dtos/response/orders-response.dto";
+import type { OrderStatusEnum } from "../../dtos/enums/orders-status.enum";
+import type { PaymentMethodEnum } from "../../dtos/enums/payment-method.enum";
 
-type OrderItem = {
-  id: string;
-  title: string;
-  description?: string;
-  price: number;
-  iconText?: string;
-  observations?: string;
+type TimelineStatus = "done" | "current" | "pending";
+
+const statusLabel: Record<OrderStatusEnum, string> = {
+  RECEIVED: "RECEBIDO",
+  KITCHEN_ACCEPTED: "ACEITO NA COZINHA",
+  OUT_FOR_DELIVERY: "SAIU PARA ENTREGA",
+  PREPARING: "EM PREPARO",
+  ON_ROUTE: "EM ROTA",
+  DELIVERED: "ENTREGUE",
+  CANCELED: "CANCELADO",
 };
 
-type Order = {
-  id: string | number;
-  statusLabel: string;
-  receivedAtLabel: string;
-  items: OrderItem[];
-  customer: {
-    name: string;
-    phoneLabel: string;
-  };
-  address: {
-    street: string;
-    cityState: string;
-    complement?: string;
-  };
-  payment: {
-    method: string;
-    details?: string;
-    paidLabel?: string;
-  };
-  history: {
-    label: string;
-    timeLabel?: string;
-    status: "done" | "current" | "pending";
-  }[];
-  subtotal: number;
-  deliveryFee: number;
-  discount: number;
+const paymentLabel: Record<PaymentMethodEnum, string> = {
+  PIX: "Pix",
+  CREDIT_CARD: "Cartao de credito",
+  DEBIT_CARD: "Cartao de debito",
+  CASH: "Dinheiro",
 };
 
-function formatBRL(value: number) {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function formatBRL(value: number | string | undefined) {
+  const parsed = Number(value ?? 0);
+  const safeValue = Number.isFinite(parsed) ? parsed : 0;
+  return safeValue.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function formatDateTime(value?: Date | string) {
+  if (!value) return "Data nao informada";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data nao informada";
+
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatReceivedAt(value?: Date | string) {
+  if (!value) return "Recebimento nao informado";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recebimento nao informado";
+
+  const diffMinutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  const elapsed =
+    diffMinutes < 1
+      ? "Agora"
+      : diffMinutes === 1
+        ? "Ha 1 minuto"
+        : `Ha ${diffMinutes} minutos`;
+
+  return `Recebido em ${formatDateTime(value)} • ${elapsed}`;
+}
+
+function getTimelineStatus(
+  historyStatus: OrderStatusEnum,
+  currentStatus: OrderStatusEnum,
+  index: number,
+  historyLength: number,
+): TimelineStatus {
+  if (historyStatus === currentStatus || index === historyLength - 1) {
+    return "current";
+  }
+
+  return "done";
 }
 
 export default function OrderDetails() {
-  const order: Order = useMemo(
-    () => ({
-      id: 1234,
-      statusLabel: "EM PREPARO",
-      receivedAtLabel: "Recebido às 19:24 • Há 12 minutos",
-      items: [
-        {
-          id: "1",
-          title: "Double Bacon Burger",
-          description: "Carne 180g, Bacon, Cheddar, Pão Australiano",
-          price: 38.9,
-          iconText: "🍔",
-          observations: "Sem cebola e bacon bem crocante, por favor.",
-        },
-        {
-          id: "2",
-          title: "Batata Frita G",
-          description: "Acompanha maionese da casa",
-          price: 15.0,
-          iconText: "🍟",
-        },
-      ],
-      customer: {
-        name: "Ricardo Silva",
-        phoneLabel: "(11) 98765-4321",
-      },
-      address: {
-        street: "Av. Paulista, 1578",
-        cityState: "Bela Vista - São Paulo/SP",
-        complement: "Apto 42, Bloco B • Próximo ao MASP",
-      },
-      payment: {
-        method: "Cartão de Crédito",
-        details: "Final 4432 (Mastercard)",
-        paidLabel: "PAGO",
-      },
-      history: [
-        {
-          label: "PEDIDO RECEBIDO",
-          timeLabel: "Hoje às 19:24",
-          status: "done",
-        },
-        {
-          label: "ACEITO NA COZINHA",
-          timeLabel: "Hoje às 19:26",
-          status: "current",
-        },
-        {
-          label: "SAIU PARA ENTREGA",
-          timeLabel: "Aguardando...",
-          status: "pending",
-        },
-        { label: "ENTREGUE", timeLabel: "Aguardando...", status: "pending" },
-      ],
-      subtotal: 53.9,
-      deliveryFee: 7.0,
-      discount: 0,
-    }),
-    [],
-  );
-
-  const total = useMemo(
-    () => order.subtotal + order.deliveryFee - order.discount,
-    [order.subtotal, order.deliveryFee, order.discount],
-  );
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  return (
-    <div
-      className={styles.page}
-      style={
-        {
-          ["--bgPrimary" as any]: Colors.Background.primary,
-          ["--bgSecondary" as any]: Colors.Background.secondary,
-          ["--textPrimary" as any]: Colors.Texts.primary,
-          ["--textSecondary" as any]: Colors.Texts.secondary,
-          ["--highlight" as any]: Colors.Highlight.primary,
-        } as React.CSSProperties
+  const [order, setOrder] = useState<OrderResponseDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!id) {
+      setError("Pedido nao informado.");
+      setIsLoading(false);
+      return;
+    }
+
+    let active = true;
+    const orderId = id;
+
+    async function loadOrder() {
+      try {
+        setIsLoading(true);
+        const data = await OrderService.findById(orderId);
+        if (active) {
+          setOrder(data);
+          setError("");
+        }
+      } catch {
+        if (active) {
+          setOrder(null);
+          setError("Nao foi possivel carregar o pedido.");
+        }
+      } finally {
+        if (active) setIsLoading(false);
       }
-    >
+    }
+
+    loadOrder();
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const total = useMemo(() => Number(order?.total ?? 0), [order?.total]);
+  const history = useMemo(() => {
+    if (!order?.history?.length) return [];
+
+    return order.history.map((item, index) => ({
+      label: item.label || statusLabel[item.status] || item.status,
+      timeLabel: formatDateTime(item.createdAt || item.time),
+      status: getTimelineStatus(
+        item.status,
+        order.status,
+        index,
+        order.history.length,
+      ),
+    }));
+  }, [order]);
+
+  const pageStyle = {
+    ["--bgPrimary" as any]: Colors.Background.primary,
+    ["--bgSecondary" as any]: Colors.Background.secondary,
+    ["--textPrimary" as any]: Colors.Texts.primary,
+    ["--textSecondary" as any]: Colors.Texts.secondary,
+    ["--highlight" as any]: Colors.Highlight.primary,
+  } as React.CSSProperties;
+
+  if (isLoading) {
+    return (
+      <div className={styles.page} style={pageStyle}>
+        <header className={styles.topbar}>
+          <div className={styles.topbarLeft}>
+            <button className={styles.iconBtn} aria-label="Voltar" onClick={() => navigate(-1)}>
+              ←
+            </button>
+            <div className={styles.topbarTitleWrap}>
+              <h1 className={styles.title}>Carregando pedido</h1>
+              <div className={styles.subtitle}>Buscando dados na API...</div>
+            </div>
+          </div>
+        </header>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className={styles.page} style={pageStyle}>
+        <header className={styles.topbar}>
+          <div className={styles.topbarLeft}>
+            <button className={styles.iconBtn} aria-label="Voltar" onClick={() => navigate(-1)}>
+              ←
+            </button>
+            <div className={styles.topbarTitleWrap}>
+              <h1 className={styles.title}>Pedido nao encontrado</h1>
+              <div className={styles.subtitle}>{error || "Pedido indisponivel."}</div>
+            </div>
+          </div>
+        </header>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.page} style={pageStyle}>
       <header className={styles.topbar}>
         <div className={styles.topbarLeft}>
           <button
@@ -137,22 +195,19 @@ export default function OrderDetails() {
 
           <div className={styles.topbarTitleWrap}>
             <div className={styles.titleRow}>
-              <h1 className={styles.title}>Pedido #{order.id}</h1>
-              <span className={styles.statusPill}>{order.statusLabel}</span>
+              <h1 className={styles.title}>Pedido #{order.code}</h1>
+              <span className={styles.statusPill}>
+                {statusLabel[order.status] || order.status}
+              </span>
             </div>
-            <div className={styles.subtitle}>{order.receivedAtLabel}</div>
+            <div className={styles.subtitle}>{formatReceivedAt(order.createdAt)}</div>
           </div>
         </div>
 
         <div className={styles.topbarRight}>
-          <button className={styles.btnGhost}>Imprimir Pedido</button>
-          <button className={styles.btnDanger}>Cancelar</button>
-
-          <div className={styles.dropdownWrap}>
-            <button className={styles.btnPrimary}>
-              Alterar Status <span className={styles.caret}>▾</span>
-            </button>
-          </div>
+          <button className={styles.btnGhost} type="button" onClick={() => window.print()}>
+            Imprimir Pedido
+          </button>
         </div>
       </header>
 
@@ -161,49 +216,71 @@ export default function OrderDetails() {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderLeft}>
-                <span className={styles.headerDot}>⚠</span>
+                <span className={styles.headerDot}>!</span>
                 <span className={styles.cardTitle}>ITENS DO PEDIDO</span>
               </div>
               <span className={styles.cardMeta}>
-                {order.items.length} itens
+                {order.items?.length ?? 0} itens
               </span>
             </div>
 
             <div className={styles.itemsList}>
-              {order.items.map((item) => (
-                <div key={item.id} className={styles.itemRow}>
-                  <div className={styles.itemIcon}>{item.iconText ?? "•"}</div>
-
-                  <div className={styles.itemInfo}>
-                    <div className={styles.itemTop}>
-                      <div className={styles.itemName}>{item.title}</div>
-                      <div className={styles.itemPrice}>
-                        {formatBRL(item.price)}
-                      </div>
+              {order.items?.length ? (
+                order.items.map((item) => (
+                  <div key={item.id} className={styles.itemRow}>
+                    <div className={styles.itemIcon}>
+                      {item.imageUrl ? (
+                        <img
+                          className={styles.itemImage}
+                          src={item.imageUrl}
+                          alt={item.name}
+                        />
+                      ) : (
+                        <span>{item.quantity}x</span>
+                      )}
                     </div>
 
-                    {item.description ? (
-                      <div className={styles.itemDesc}>{item.description}</div>
-                    ) : null}
-
-                    {item.observations ? (
-                      <div className={styles.obsBox}>
-                        <div className={styles.obsTitle}>OBSERVAÇÕES:</div>
-                        <div className={styles.obsText}>
-                          {item.observations}
+                    <div className={styles.itemInfo}>
+                      <div className={styles.itemTop}>
+                        <div className={styles.itemName}>
+                          {item.quantity}x {item.name}
+                        </div>
+                        <div className={styles.itemPrice}>
+                          {formatBRL(item.totalPrice || Number(item.unitPrice) * item.quantity)}
                         </div>
                       </div>
-                    ) : null}
+
+                      {item.description ? (
+                        <div className={styles.itemDesc}>{item.description}</div>
+                      ) : null}
+
+                      {item.addons?.length ? (
+                        <div className={styles.itemDesc}>
+                          {item.addons
+                            .map((addon) => `${addon.quantity ?? 1}x ${addon.name}`)
+                            .join(", ")}
+                        </div>
+                      ) : null}
+
+                      {item.observations ? (
+                        <div className={styles.obsBox}>
+                          <div className={styles.obsTitle}>OBSERVACOES:</div>
+                          <div className={styles.obsText}>{item.observations}</div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className={styles.itemDesc}>Nenhum item encontrado.</div>
+              )}
             </div>
           </div>
 
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderLeft}>
-                <span className={styles.headerDot}>💳</span>
+                <span className={styles.headerDot}>R$</span>
                 <span className={styles.cardTitle}>RESUMO DE VALORES</span>
               </div>
             </div>
@@ -234,8 +311,6 @@ export default function OrderDetails() {
                 <div className={styles.totalLabel}>TOTAL DO PEDIDO</div>
                 <div className={styles.totalValue}>{formatBRL(total)}</div>
               </div>
-
-              <div className={styles.paidTag}>PAGO ONLINE</div>
             </div>
           </div>
         </section>
@@ -249,36 +324,39 @@ export default function OrderDetails() {
             </div>
 
             <div className={styles.customerRow}>
-              <div className={styles.avatar}>👤</div>
+              <div className={styles.avatar}>
+                {(order.customerName || "?").slice(0, 1).toUpperCase()}
+              </div>
               <div className={styles.customerInfo}>
-                <div className={styles.customerName}>{order.customer.name}</div>
+                <div className={styles.customerName}>
+                  {order.customerName || "Nao informado"}
+                </div>
                 <div className={styles.customerPhone}>
-                  {order.customer.phoneLabel}
+                  {order.customerPhone || "Telefone nao informado"}
                 </div>
               </div>
             </div>
-
-            <button className={styles.whatsBtn}>Abrir WhatsApp</button>
           </div>
 
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderLeft}>
                 <span className={styles.cardTitleMuted}>
-                  ENDEREÇO DE ENTREGA
+                  ENDERECO DE ENTREGA
                 </span>
               </div>
-              <button className={styles.linkBtn}>Ver no Mapa ↗</button>
             </div>
 
             <div className={styles.addressBlock}>
-              <div className={styles.addressLine1}>{order.address.street}</div>
-              <div className={styles.addressLine2}>
-                {order.address.cityState}
+              <div className={styles.addressLine1}>
+                {order.addressStreet || "Endereco nao informado"}
               </div>
-              {order.address.complement ? (
+              {order.addressCityState ? (
+                <div className={styles.addressLine2}>{order.addressCityState}</div>
+              ) : null}
+              {order.addressComplement ? (
                 <div className={styles.addressLine3}>
-                  {order.address.complement}
+                  {order.addressComplement}
                 </div>
               ) : null}
             </div>
@@ -291,20 +369,12 @@ export default function OrderDetails() {
                   FORMA DE PAGAMENTO
                 </span>
               </div>
-              {order.payment.paidLabel ? (
-                <span className={styles.paidPill}>
-                  {order.payment.paidLabel}
-                </span>
-              ) : null}
             </div>
 
             <div className={styles.paymentBlock}>
-              <div className={styles.paymentMethod}>{order.payment.method}</div>
-              {order.payment.details ? (
-                <div className={styles.paymentDetails}>
-                  {order.payment.details}
-                </div>
-              ) : null}
+              <div className={styles.paymentMethod}>
+                {paymentLabel[order.paymentMethod] || "Nao informado"}
+              </div>
             </div>
           </div>
 
@@ -312,52 +382,54 @@ export default function OrderDetails() {
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderLeft}>
                 <span className={styles.cardTitleMuted}>
-                  HISTÓRICO DO PEDIDO
+                  HISTORICO DO PEDIDO
                 </span>
               </div>
             </div>
 
             <div className={styles.timeline}>
-              {order.history.map((h, idx) => {
-                const isLast = idx === order.history.length - 1;
-                return (
-                  <div key={`${h.label}-${idx}`} className={styles.timelineRow}>
-                    <div className={styles.tlLeft}>
-                      <div
-                        className={`${styles.tlDot} ${
-                          h.status === "done"
-                            ? styles.tlDotDone
-                            : h.status === "current"
-                              ? styles.tlDotCurrent
-                              : styles.tlDotPending
-                        }`}
-                      />
-                      {!isLast ? (
+              {history.length ? (
+                history.map((h, idx) => {
+                  const isLast = idx === history.length - 1;
+                  return (
+                    <div key={`${h.label}-${idx}`} className={styles.timelineRow}>
+                      <div className={styles.tlLeft}>
                         <div
-                          className={`${styles.tlLine} ${
+                          className={`${styles.tlDot} ${
                             h.status === "done"
-                              ? styles.tlLineDone
-                              : styles.tlLinePending
+                              ? styles.tlDotDone
+                              : h.status === "current"
+                                ? styles.tlDotCurrent
+                                : styles.tlDotPending
                           }`}
                         />
-                      ) : null}
-                    </div>
-
-                    <div className={styles.tlContent}>
-                      <div
-                        className={`${styles.tlLabel} ${
-                          h.status === "pending" ? styles.tlLabelPending : ""
-                        }`}
-                      >
-                        {h.label}
+                        {!isLast ? (
+                          <div
+                            className={`${styles.tlLine} ${
+                              h.status === "done"
+                                ? styles.tlLineDone
+                                : styles.tlLinePending
+                            }`}
+                          />
+                        ) : null}
                       </div>
-                      {h.timeLabel ? (
+
+                      <div className={styles.tlContent}>
+                        <div
+                          className={`${styles.tlLabel} ${
+                            h.status === "pending" ? styles.tlLabelPending : ""
+                          }`}
+                        >
+                          {h.label}
+                        </div>
                         <div className={styles.tlTime}>{h.timeLabel}</div>
-                      ) : null}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className={styles.tlTime}>Historico nao informado.</div>
+              )}
             </div>
           </div>
         </aside>

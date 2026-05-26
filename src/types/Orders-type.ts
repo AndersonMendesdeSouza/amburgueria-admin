@@ -1,19 +1,12 @@
-import type { OrderStatusEnum } from "../dtos/enums/orders-status.enum";
-
-type OrderItem = {
-  name: string;
-  quantity: number;
-};
-
-export interface Order {
+export interface OrderItem {
   id: string;
-  number: string;
-  customerName: string;
-  minutes: number;
-  total: number;
-  status: OrderStatusEnum;
-  items?: OrderItem[];
-  courierName?: string;
-  urgent?: boolean;
-  cookingLabel?: string;
+  productId?: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  observations?: string;
+  addons?: { id?: string; name: string; price: number; quantity?: number }[];
 }

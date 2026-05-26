@@ -4,7 +4,7 @@ import { FiChevronLeft, FiChevronRight, FiPlus } from "react-icons/fi";
 import ProductCard from "../../components/ProductCard";
 import { CgFileAdd } from "react-icons/cg";
 import type { CategoryKey } from "../../types/Product-type";
-import { ProductService } from "../../service/Product.service";
+import { ProductService } from "../../service/product.service";
 import type { ProductResponse } from "../../dtos/response/product-response.dto";
 import { ProductCategoryEnum } from "../../dtos/enums/product-category.enum";
 import { useNavigate } from "react-router-dom";

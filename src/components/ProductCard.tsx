@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { ProductCategoryEnum } from "../dtos/enums/product-category.enum";
 import type { ImageResponse } from "../dtos/response/image-response.dto";
 import { ProductStatusEnum } from "../dtos/enums/product-status.enum";
-import { ProductService } from "../service/Product.service";
+import { ProductService } from "../service/product.service";
 
 type Props = {
   id: string;
@@ -50,13 +50,21 @@ export default function ProductCard({
     ProductService.actived(id, newStatus);
   }
 
+  const API_BASE_URL = "http://localhost:3000";
+
+  function resolveImageUrl(url?: string) {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `${API_BASE_URL}/${url}`;
+  }
+
   return (
     <div className={styles.card}>
       <div className={styles.media}>
         <img
           // className={`${styles.image} ${inStock === ProductStatusEnum.DISABLED ? styles.imageDim : ""}`}
           className={`${styles.image} ${!status ? styles.imageDim : ""}`}
-          src={imageUrl[0]?.url || ""}
+          src={resolveImageUrl(imageUrl[0]?.url)}
           alt=""
         />
 

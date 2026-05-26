@@ -1,122 +1,87 @@
 import { OrderStatusEnum } from "../../dtos/enums/orders-status.enum";
-import type { Order } from "../../types/Orders-type";
+import type { OrderResponseDto } from "../../dtos/response/orders-response.dto";
 import styles from "./Orders.module.css";
-import { FiMoreHorizontal, FiPlus } from "react-icons/fi";
+import { FiMoreHorizontal } from "react-icons/fi";
 import { OrderCard } from "../../components/OrderCard";
+import { useEffect, useState } from "react";
+import { OrderService } from "../../service/order.service";
 
-const MOCK_ORDERS: Order[] = [
+type BoardOrder = {
+  id: string;
+  number: string;
+  customerName: string;
+  minutes: number;
+  total: number;
+  status: OrderStatusEnum;
+  items: { name: string; quantity: number }[];
+};
+
+type ColumnTone = "yellow" | "blue" | "orange" | "green";
+
+const ORDER_COLUMNS: {
+  title: string;
+  status: OrderStatusEnum;
+  tone: ColumnTone;
+}[] = [
   {
-    id: "o1",
-    number: "1234",
-    customerName: "Ricardo Silva",
-    minutes: 12,
-    total: 45.9,
-    status: OrderStatusEnum.NEW,
-    items: [
-      { name: "Double Bacon Burger", quantity: 1 },
-      { name: "Batata Frita G", quantity: 1 },
-    ],
+    title: "NOVOS",
+    status: OrderStatusEnum.RECEIVED,
+    tone: "yellow",
   },
   {
-    id: "o1",
-    number: "1234",
-    customerName: "Ricardo Silva",
-    minutes: 12,
-    total: 45.9,
-    status: OrderStatusEnum.NEW,
-    items: [
-      { name: "Double Bacon Burger", quantity: 1 },
-      { name: "Batata Frita G", quantity: 1 },
-    ],
-  },
-  {
-    id: "o1",
-    number: "1234",
-    customerName: "Ricardo Silva",
-    minutes: 12,
-    total: 45.9,
-    status: OrderStatusEnum.NEW,
-    items: [
-      { name: "Double Bacon Burger", quantity: 1 },
-      { name: "Batata Frita G", quantity: 1 },
-    ],
-  },
-  {
-    id: "o1",
-    number: "1234",
-    customerName: "Ricardo Silva",
-    minutes: 12,
-    total: 45.9,
-    status: OrderStatusEnum.NEW,
-    items: [
-      { name: "Double Bacon Burger", quantity: 1 },
-      { name: "Batata Frita G", quantity: 1 },
-    ],
-  },
-  {
-    id: "o1",
-    number: "1234",
-    customerName: "Ricardo Silva",
-    minutes: 12,
-    total: 45.9,
-    status: OrderStatusEnum.NEW,
-    items: [
-      { name: "Double Bacon Burger", quantity: 1 },
-      { name: "Batata Frita G", quantity: 1 },
-    ],
-  },
-  {
-    id: "o2",
-    number: "1237",
-    customerName: "Carla Dias",
-    minutes: 2,
-    total: 75,
-    status: OrderStatusEnum.NEW,
-    items: [{ name: "Smash Burger", quantity: 3 }],
-    urgent: true,
-  },
-  {
-    id: "o3",
-    number: "1235",
-    customerName: "Ana Oliveira",
-    minutes: 8,
-    total: 62,
+    title: "EM PREPARO",
     status: OrderStatusEnum.PREPARING,
-    items: [
-      { name: "Smash Burger", quantity: 2 },
-      { name: "Coca-Cola 350ml", quantity: 1 },
-    ],
-    cookingLabel: "Cozinhando...",
+    tone: "blue",
   },
   {
-    id: "o4",
-    number: "1236",
-    customerName: "Bruno Souza",
-    minutes: 6,
-    total: 38.5,
+    title: "EM ROTA",
     status: OrderStatusEnum.ON_ROUTE,
-    courierName: "João Pedro",
+    tone: "orange",
   },
   {
-    id: "o5",
-    number: "1240",
-    customerName: "Marina Costa",
-    minutes: 4,
-    total: 51.9,
-    status: OrderStatusEnum.PREPARING,
-    items: [{ name: "Batata Frita G", quantity: 2 }],
-    cookingLabel: "Cozinhando...",
-  },
-  {
-    id: "o6",
-    number: "1242",
-    customerName: "Paulo Henrique",
-    minutes: 15,
-    total: 29.9,
-    status: OrderStatusEnum.ON_ROUTE,
-    courierName: "Luan",
+    title: "ENTREGUES",
+    status: OrderStatusEnum.DELIVERED,
+    tone: "green",
   },
 ];
+
+function getMinutesAgo(createdAt: Date | string) {
+  const createdAtTime = new Date(createdAt).getTime();
+  const diff = Date.now() - createdAtTime;
+
+  if (Number.isNaN(createdAtTime) || diff < 0) {
+    return 0;
+  }
+
+  return Math.floor(diff / 60000);
+}
+
+function getBoardStatus(status: OrderResponseDto["status"]): OrderStatusEnum {
+  if (status === "KITCHEN_ACCEPTED" || status === OrderStatusEnum.PREPARING) {
+    return OrderStatusEnum.PREPARING;
+  }
+
+  if (status === "OUT_FOR_DELIVERY" || status === OrderStatusEnum.ON_ROUTE) {
+    return OrderStatusEnum.ON_ROUTE;
+  }
+
+  return status as OrderStatusEnum;
+}
+
+function mapOrderToBoardOrder(order: OrderResponseDto): BoardOrder {
+  return {
+    id: order.id,
+    number: String(order.code),
+    customerName: order.customerName,
+    minutes: getMinutesAgo(order.createdAt),
+    total: Number(order.total),
+    status: getBoardStatus(order.status),
+    items: (order.items || []).map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+    })),
+  };
+}
 
 function ColumnHeader({
   title,
@@ -125,7 +90,7 @@ function ColumnHeader({
 }: {
   title: string;
   count: number;
-  tone: "yellow" | "blue" | "orange";
+  tone: ColumnTone;
 }) {
   return (
     <div className={styles.columnHeader}>
@@ -145,109 +110,76 @@ function ColumnHeader({
 }
 
 export function Orders() {
-  const news = MOCK_ORDERS.filter((o) => o.status === OrderStatusEnum.NEW);
-  const preparing = MOCK_ORDERS.filter(
-    (o) => o.status === OrderStatusEnum.PREPARING,
-  );
-  const onRoute = MOCK_ORDERS.filter(
-    (o) => o.status === OrderStatusEnum.ON_ROUTE,
-  );
+  const [orders, setOrders] = useState<BoardOrder[]>([]);
+
+  useEffect(() => {
+    async function loadOrders() {
+      const data = await OrderService.findAll();
+      setOrders(data.map(mapOrderToBoardOrder));
+    }
+
+    loadOrders();
+    const intervalId = window.setInterval(loadOrders, 10000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  async function alterStatus(
+    id: string,
+    status: OrderStatusEnum,
+  ): Promise<void> {
+    const updatedOrder = await OrderService.alterStatus(id, status);
+    const boardOrder = mapOrderToBoardOrder(updatedOrder);
+
+    setOrders((currentOrders) =>
+      currentOrders.map((order) => (order.id === id ? boardOrder : order)),
+    );
+  }
 
   return (
     <div className={styles.page}>
       <div className={styles.board}>
-        <section className={styles.column}>
-          <ColumnHeader title="NOVOS" count={news.length} tone="yellow" />
-          <div className={styles.list}>
-            {news.map((o) => (
-              <div
-                key={o.id}
-                className={`${styles.cardWrapper} ${styles.cardWrapper_yellow}`}
-              >
-                <OrderCard
-                  navigateTo="/orders-details"
-                  status={o.status}
-                  orderNumber={o.number}
-                  customerName={o.customerName}
-                  minutesAgo={o.minutes}
-                  items={(o.items || []).map((it) => ({
-                    name: it.name,
-                    quantity: it.quantity,
-                  }))}
-                  total={o.total}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+        {ORDER_COLUMNS.map((column) => {
+          const columnOrders = orders.filter((o) => o.status === column.status);
 
-        <section className={styles.column}>
-          <ColumnHeader
-            title="EM PREPARO"
-            count={preparing.length}
-            tone="blue"
-          />
-          <div className={styles.list}>
-            {preparing.map((o) => (
-              <div
-                key={o.id}
-                className={`${styles.cardWrapper} ${styles.cardWrapper_blue}`}
-              >
-                <OrderCard
-                  navigateTo="/orders-details"
-                  status={o.status}
-                  orderNumber={o.number}
-                  customerName={o.customerName}
-                  minutesAgo={o.minutes}
-                  items={(o.items || []).map((it) => ({
-                    name: it.name,
-                    quantity: it.quantity,
-                  }))}
-                  total={o.total}
-                />
+          return (
+            <section className={styles.column} key={column.status}>
+              <ColumnHeader
+                title={column.title}
+                count={columnOrders.length}
+                tone={column.tone}
+              />
+              <div className={styles.list}>
+                {columnOrders.map((o) => (
+                  <div
+                    key={o.id}
+                    className={`${styles.cardWrapper} ${
+                      styles[`cardWrapper_${column.tone}`]
+                    }`}
+                  >
+                    <OrderCard
+                      navigateTo={`/orders-details/${o.id}`}
+                      status={o.status}
+                      orderNumber={o.number}
+                      customerName={o.customerName}
+                      minutesAgo={o.minutes}
+                      items={o.items}
+                      total={o.total}
+                      onAccept={
+                        o.status === OrderStatusEnum.DELIVERED
+                          ? undefined
+                          : () => alterStatus(o.id, o.status)
+                      }
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.column}>
-          <ColumnHeader title="EM ROTA" count={onRoute.length} tone="orange" />
-          <div className={styles.list}>
-            {onRoute.map((o) => (
-              <div
-                key={o.id}
-                className={`${styles.cardWrapper} ${styles.cardWrapper_orange}`}
-              >
-                <OrderCard
-                  navigateTo="/orders-details"
-                  status={o.status}
-                  orderNumber={o.number}
-                  customerName={o.customerName}
-                  minutesAgo={o.minutes}
-                  items={
-                    o.items && o.items.length
-                      ? o.items.map((it) => ({
-                          name: it.name,
-                          quantity: it.quantity,
-                        }))
-                      : [
-                          {
-                            name: `Entregador | ${o.courierName || "—"}`,
-                            quantity: 1,
-                          },
-                        ]
-                  }
-                  total={o.total}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+            </section>
+          );
+        })}
       </div>
-
-      <button className={styles.fab} type="button" aria-label="Novo pedido">
-        <FiPlus />
-      </button>
     </div>
   );
 }

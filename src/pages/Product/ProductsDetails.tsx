@@ -4,11 +4,13 @@ import { FiEye, FiTrash2, FiX } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import Colors from "../../themes/Colors";
 import { BiTrash } from "react-icons/bi";
-import { ProductService } from "../../service/Product.service";
+import { ProductService } from "../../service/product.service";
 import type { ProductResponse } from "../../dtos/response/product-response.dto";
 import type { ProductRequest } from "../../dtos/request/product-request.dto";
 import { ProductCategoryEnum } from "../../dtos/enums/product-category.enum";
 import { ProductStatusEnum } from "../../dtos/enums/product-status.enum";
+
+const API_BASE_URL = "https://amburgueria-api.onrender.com";
 
 type Media = {
   id: string;
@@ -109,7 +111,7 @@ export function ProductsDetails() {
       setMedia(
         (data.images || []).map((img: any) => ({
           id: String(img.id ?? img.fileName ?? img.url),
-          url: img.url,
+          url: `${API_BASE_URL}/${img.url}`,
           isPrimary: !!img.isPrimary,
         })),
       );
@@ -192,8 +194,7 @@ export function ProductsDetails() {
     const p = toDot(price);
     const pNum = p ? Number(p) : NaN;
     if (!price.trim()) next.price = "Preencha o preço";
-    else if (!Number.isFinite(pNum) || pNum < 0)
-      next.price = "Preço inválido";
+    else if (!Number.isFinite(pNum) || pNum < 0) next.price = "Preço inválido";
 
     if (promoPrice.trim()) {
       const pp = toDot(promoPrice);
@@ -261,7 +262,9 @@ export function ProductsDetails() {
   }
 
   const inputErrorClass = (key: keyof FieldErrors) =>
-    submitted && errors[key] ? `${styles.input} ${styles.inputError}` : styles.input;
+    submitted && errors[key]
+      ? `${styles.input} ${styles.inputError}`
+      : styles.input;
 
   const textareaErrorClass = (key: keyof FieldErrors) =>
     submitted && errors[key]
@@ -416,8 +419,7 @@ export function ProductsDetails() {
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
-                  if (submitted)
-                    setErrors((p) => ({ ...p, name: undefined }));
+                  if (submitted) setErrors((p) => ({ ...p, name: undefined }));
                 }}
               />
               {submitted && errors.name ? (

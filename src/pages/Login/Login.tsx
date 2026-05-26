@@ -5,8 +5,7 @@ import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
 import { IoRestaurant } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { UserService } from "../../service/User.service";
-
+import { UserService } from "../../service/user.service";
 type Props = {
   backgroundImageUrl?: string;
   onSubmit?: (data: {
