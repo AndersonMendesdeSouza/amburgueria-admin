@@ -7,17 +7,20 @@ import { ProductsDetails } from "./pages/Product/ProductsDetails";
 import OrderDetails from "./pages/Orders/OrdersDetails";
 import Login from "./pages/Login/Login";
 import { useAuth } from "./contexts/AuthContext";
+import { Config } from "./pages/Config/Config";
 
 export default function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
 
   return (
     <Routes>
       <Route
         path="/login"
-        element={
-          isAuthenticated ? <Navigate to="/dashboard" /> : <Login />
-        }
+        element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />}
       />
 
       <Route
@@ -29,6 +32,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/pedidos" element={<Orders />} />
         <Route path="/produtos" element={<Products />} />
+        <Route path="/configuracoes" element={<Config />} />
         <Route path="/product-details/:id?" element={<ProductsDetails />} />
         <Route path="/orders-details/:id" element={<OrderDetails />} />
       </Route>

@@ -1,8 +1,9 @@
 import axios from "axios";
 
 const api = axios.create({
-  // baseURL: "http://localhost:3000",
-  baseURL: "https://amburgueria-api-production.up.railway.app",
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    "https://amburgueria-api-production.up.railway.app",
 });
 
 api.interceptors.request.use((config) => {
