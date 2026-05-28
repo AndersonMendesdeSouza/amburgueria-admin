@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SystemSettingsService } from "../../service/system-settings.service";
 import type { SystemSettingsResponse } from "../../dtos/response/system-settings-response.dto";
 import styles from "./Config.module.css";
+import { FiExternalLink } from "react-icons/fi";
 
 const TIMEZONES = ["America/Sao_Paulo", "America/Manaus", "America/Belem"];
 
@@ -94,14 +95,26 @@ export function Config() {
           </p>
         </div>
 
-        <span
-          className={`${styles.statusPill} ${
-            settings?.available ? "" : styles.statusPillClosed
-          }`}
-        >
-          <span className={styles.statusDot} />
-          {statusText}
-        </span>
+        <div className={styles.headerActions}>
+          <a
+            className={styles.siteLink}
+            href="https://amburgueria-site.vercel.app/main"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Acessar site
+            <FiExternalLink aria-hidden />
+          </a>
+
+          <span
+            className={`${styles.statusPill} ${
+              settings?.available ? "" : styles.statusPillClosed
+            }`}
+          >
+            <span className={styles.statusDot} />
+            {statusText}
+          </span>
+        </div>
       </div>
 
       <section className={styles.panel}>

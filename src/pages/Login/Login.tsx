@@ -6,6 +6,7 @@ import { IoRestaurant } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { UserService } from "../../service/user.service";
+import { UserRole } from "../../dtos/enums/user-role.enum";
 type Props = {
   backgroundImageUrl?: string;
   onSubmit?: (data: {
@@ -23,32 +24,46 @@ export default function Login({
   const [password, setPassword] = useState("admin.maisburguer");
   const [remember, setRemember] = useState(true);
   const [showPass, setShowPass] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const navigate = useNavigate();
 
   const { login: contextLogin } = useAuth();
 
   async function login() {
+    if (isLoggingIn) {
+      return;
+    }
+
+    setIsLoggingIn(true);
+
     try {
       const payload = { email, password };
 
       // const data = await UserService.login(payload);
       const data = await UserService.login(payload);
 
-      // Salva token no storage
-      localStorage.setItem("token", data.token);
+      if (data.role === UserRole.ADMIN) {
+        // Salva token no storage
+        localStorage.setItem("token", data.token);
 
-      // Atualiza estado global
-      contextLogin(data.token);
+        // Atualiza estado global
+        contextLogin(data.token);
 
-      // Redireciona para dashboard
-      navigate("/dashboard");
+        // Redireciona para dashboard
+        navigate("/dashboard");
+      } else {
+        alert("Acesso negado");
+      }
     } catch (error) {
       alert("Email ou senha inválidos");
+    } finally {
+      setIsLoggingIn(false);
     }
   }
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     onSubmit?.({ email, password, remember });
+    await login();
   }
 
   //   async function login() {
@@ -186,12 +201,19 @@ export default function Login({
             <button
               className={styles.submit}
               type="submit"
-              onClick={() => login()}
+              disabled={isLoggingIn}
+              aria-busy={isLoggingIn}
             >
-              ENTRAR NO PAINEL
-              <span className={styles.submitIcon} aria-hidden>
-                <FiArrowRight />
-              </span>
+              {isLoggingIn ? (
+                <span className={styles.loader} aria-hidden />
+              ) : (
+                <>
+                  ENTRAR NO PAINEL
+                  <span className={styles.submitIcon} aria-hidden>
+                    <FiArrowRight />
+                  </span>
+                </>
+              )}
             </button>
 
             <div className={styles.hr} />
