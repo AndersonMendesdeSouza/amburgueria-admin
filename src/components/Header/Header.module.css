@@ -82,3 +82,18 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+.badgeClosed {
+  background: rgba(255, 61, 0, 0.15);
+  color: #ff6d3a;
+}
+
+.badgeLoading {
+  background: rgba(158, 158, 158, 0.16);
+  color: #d0d0d0;
+}
+
+.badgeUnavailable {
+  background: rgba(255, 193, 7, 0.16);
+  color: #ffc107;
+}

@@ -75,6 +75,11 @@ export function Config() {
       setClosingTime(normalizeTime(data.closingTime));
       setTimezone(data.timezone);
       setOrdersEnabled(data.ordersEnabled);
+      window.dispatchEvent(
+        new CustomEvent<SystemSettingsResponse>("system-settings:updated", {
+          detail: data,
+        }),
+      );
       setSuccess("Horário de funcionamento salvo com sucesso.");
     } catch {
       setError("Não foi possível salvar as configurações.");
