@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import styles from "./Login.module.css";
 import Colors from "../../themes/Colors";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
@@ -14,6 +15,15 @@ type Props = {
     password: string;
     remember: boolean;
   }) => void;
+};
+
+type LoginCssVars = CSSProperties & {
+  "--bgPrimary": string;
+  "--bgSecondary": string;
+  "--highlight": string;
+  "--textPrimary": string;
+  "--textSecondary": string;
+  "--heroImage": string;
 };
 
 export default function Login({
@@ -54,13 +64,13 @@ export default function Login({
       } else {
         alert("Acesso negado");
       }
-    } catch (error) {
+    } catch {
       alert("Email ou senha inválidos");
     } finally {
       setIsLoggingIn(false);
     }
   }
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     onSubmit?.({ email, password, remember });
     await login();
@@ -85,13 +95,13 @@ export default function Login({
       className={styles.page}
       style={
         {
-          ["--bgPrimary" as any]: Colors.Background.primary,
-          ["--bgSecondary" as any]: Colors.Background.secondary,
-          ["--highlight" as any]: Colors.Highlight.primary,
-          ["--textPrimary" as any]: Colors.Texts.primary,
-          ["--textSecondary" as any]: Colors.Texts.secondary,
-          ["--heroImage" as any]: `url(${backgroundImageUrl})`,
-        } as React.CSSProperties
+          "--bgPrimary": Colors.Background.primary,
+          "--bgSecondary": Colors.Background.secondary,
+          "--highlight": Colors.Highlight.primary,
+          "--textPrimary": Colors.Texts.primary,
+          "--textSecondary": Colors.Texts.secondary,
+          "--heroImage": `url(${backgroundImageUrl})`,
+        } as LoginCssVars
       }
     >
       <div className={styles.left}>

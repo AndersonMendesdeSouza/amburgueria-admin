@@ -5,7 +5,7 @@ import api from "./api";
 
 const API_URL = "/products";
 
-function appendFormValue(fd: FormData, key: string, value: any) {
+function appendFormValue(fd: FormData, key: string, value: unknown) {
   if (value === undefined || value === null) return;
 
   if (Array.isArray(value) || typeof value === "object") {

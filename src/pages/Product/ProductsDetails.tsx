@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ProductDetails.module.css";
 import { FiEye, FiTrash2, FiX } from "react-icons/fi";
@@ -6,11 +7,14 @@ import Colors from "../../themes/Colors";
 import { BiTrash } from "react-icons/bi";
 import { ProductService } from "../../service/product.service";
 import type { ProductResponse } from "../../dtos/response/product-response.dto";
-import type { ProductRequest } from "../../dtos/request/product-request.dto";
+import type { ImageResponse } from "../../dtos/response/image-response.dto";
+import type {
+  ProductAddonRequest,
+  ProductRequest,
+} from "../../dtos/request/product-request.dto";
 import { ProductCategoryEnum } from "../../dtos/enums/product-category.enum";
 import { ProductStatusEnum } from "../../dtos/enums/product-status.enum";
-
-const API_BASE_URL = "https://amburgueria-api.onrender.com";
+import { API_BASE_URL } from "../../service/api";
 
 type Media = {
   id: string;
@@ -22,7 +26,9 @@ type Media = {
 type Addon = {
   id: string;
   name: string;
+  description?: string;
   price: number;
+  isActive?: boolean;
 };
 
 type FieldErrors = {
@@ -35,18 +41,25 @@ type FieldErrors = {
   stock?: string;
 };
 
+type ProductDetailsCssVars = CSSProperties & {
+  "--bgPrimary": string;
+  "--bgSecondary": string;
+  "--highlight": string;
+  "--textPrimary": string;
+  "--textSecondary": string;
+};
+
 function currencyBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-const MOCK_ADDONS: Addon[] = [
-  { id: "a1", name: "Bacon Extra Crispy", price: 6.0 },
-  { id: "a2", name: "Cheddar em Dobro", price: 4.5 },
-];
-
 export function ProductsDetails() {
   const [media, setMedia] = useState<Media[]>([]);
-  const [addons, setAddons] = useState<Addon[]>(MOCK_ADDONS);
+  const [addons, setAddons] = useState<Addon[]>([]);
+  const [addonName, setAddonName] = useState("");
+  const [addonDescription, setAddonDescription] = useState("");
+  const [addonPrice, setAddonPrice] = useState("");
+  const [showAddonForm, setShowAddonForm] = useState(false);
   const [product, setProduct] = useState<ProductResponse | null>(null);
   const navigate = useNavigate();
 
@@ -98,7 +111,12 @@ export function ProductsDetails() {
         setPromoPrice("");
         setActive(ProductStatusEnum.DISABLED);
         setStockEnabled(false);
-        setStock("0");
+      setStock("0");
+        setAddons([]);
+        setAddonName("");
+        setAddonDescription("");
+        setAddonPrice("");
+        setShowAddonForm(false);
         setErrors({});
         setSubmitted(false);
         return;
@@ -106,12 +124,14 @@ export function ProductsDetails() {
 
       const data = await ProductService.findOne(id);
       setProduct(data);
-      setActive(data.isActive as any);
+      setActive(data.isActive || ProductStatusEnum.DISABLED);
       setStockEnabled(!!data.stockEnabled);
       setMedia(
-        (data.images || []).map((img: any) => ({
+        (data.images || []).map((img: ImageResponse) => ({
           id: String(img.id ?? img.fileName ?? img.url),
-          url: `${API_BASE_URL}/${img.url}`,
+          url: img.url?.startsWith("http")
+            ? img.url
+            : `${API_BASE_URL}/${String(img.url || "").replace(/^\/+/, "")}`,
           isPrimary: !!img.isPrimary,
         })),
       );
@@ -126,6 +146,19 @@ export function ProductsDetails() {
         data.promoPrice ? String(data.promoPrice).replace(".", ",") : "",
       );
       setStock(String(data.stock ?? 0));
+      setAddons(
+        (data.addons || []).map((addon) => ({
+          id: String(addon.id),
+          name: addon.name,
+          description: addon.description || "",
+          price: Number(addon.price || 0),
+          isActive: addon.isActive ?? true,
+        })),
+      );
+      setAddonName("");
+      setAddonDescription("");
+      setAddonPrice("");
+      setShowAddonForm(false);
       setErrors({});
       setSubmitted(false);
     };
@@ -148,6 +181,40 @@ export function ProductsDetails() {
 
   const removeAddon = (aid: string) => {
     setAddons((prev) => prev.filter((a) => a.id !== aid));
+  };
+
+  const createAddonId = () => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
+  const addAddon = () => {
+    const cleanName = addonName.trim();
+    const cleanDescription = addonDescription.trim();
+    const cleanPrice = toDot(addonPrice);
+    const priceNumber = Number(cleanPrice);
+
+    if (!cleanName || !Number.isFinite(priceNumber) || priceNumber < 0) {
+      return;
+    }
+
+    setAddons((prev) => [
+      ...prev,
+      {
+        id: createAddonId(),
+        name: cleanName,
+        description: cleanDescription || undefined,
+        price: priceNumber,
+        isActive: true,
+      },
+    ]);
+    setAddonName("");
+    setAddonDescription("");
+    setAddonPrice("");
+    setShowAddonForm(false);
   };
 
   function deletFood(pid: string | undefined): void {
@@ -226,7 +293,9 @@ export function ProductsDetails() {
     if (Object.keys(nextErrors).length) {
       const firstKey = Object.keys(nextErrors)[0] as keyof FieldErrors;
       const el = document.querySelector(`[data-field="${firstKey}"]`);
-      (el as any)?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      if (el instanceof HTMLElement) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -239,7 +308,14 @@ export function ProductsDetails() {
       isActive,
       stockEnabled: !!stockEnabled,
       stock: stockEnabled ? Number(stock || 0) : 0,
-    } as any;
+      addons: addons.map<ProductAddonRequest>((addon) => ({
+        id: addon.id,
+        name: addon.name,
+        description: addon.description,
+        price: addon.price,
+        isActive: addon.isActive ?? true,
+      })),
+    };
 
     const filesToUpload = media
       .filter((m) => m.file instanceof File)
@@ -249,7 +325,7 @@ export function ProductsDetails() {
       setSaving(true);
 
       if (isEdit && id) {
-        await ProductService.update(id, payload as any);
+        await ProductService.update(id, payload);
         navigate(-1);
         return;
       }
@@ -281,12 +357,12 @@ export function ProductsDetails() {
       className={styles.page}
       style={
         {
-          ["--bgPrimary" as any]: Colors.Background.primary,
-          ["--bgSecondary" as any]: Colors.Background.secondary,
-          ["--highlight" as any]: Colors.Highlight.primary,
-          ["--textPrimary" as any]: Colors.Texts.primary,
-          ["--textSecondary" as any]: Colors.Texts.secondary,
-        } as React.CSSProperties
+          "--bgPrimary": Colors.Background.primary,
+          "--bgSecondary": Colors.Background.secondary,
+          "--highlight": Colors.Highlight.primary,
+          "--textPrimary": Colors.Texts.primary,
+          "--textSecondary": Colors.Texts.secondary,
+        } as ProductDetailsCssVars
       }
     >
       <input
@@ -587,42 +663,108 @@ export function ProductsDetails() {
         </div>
       </div>
 
-      <div className={styles.bottomBar}></div>
-
       <div className={styles.addonsPanel}>
         <div className={styles.addonsHeader}>
           <div className={styles.addonsTitle}>
             <span className={styles.addonDot}>+</span>
             Adicionais
           </div>
-          <button className={styles.linkNew} type="button">
+          <button
+            className={styles.linkNew}
+            type="button"
+            onClick={() => setShowAddonForm((v) => !v)}
+          >
             + Vincular Novo
           </button>
         </div>
 
-        <div className={styles.addonsList}>
-          {addons.map((a) => (
-            <div key={a.id} className={styles.addonChip}>
-              <div className={styles.addonLeft}>
-                <span className={styles.addonIcon}>🍽️</span>
-                <div>
-                  <div className={styles.addonName}>{a.name}</div>
-                  <div className={styles.addonPrice}>
-                    {currencyBRL(a.price)}
-                  </div>
-                </div>
-              </div>
+        {showAddonForm && (
+          <div className={styles.addonForm}>
+            <div className={styles.field}>
+              <label className={styles.label}>NOME DO ADICIONAL</label>
+              <input
+                className={styles.input}
+                value={addonName}
+                onChange={(e) => setAddonName(e.target.value)}
+                placeholder="Ex: Bacon extra"
+              />
+            </div>
 
+            <div className={styles.field}>
+              <label className={styles.label}>DESCRIÇÃO</label>
+              <input
+                className={styles.input}
+                value={addonDescription}
+                onChange={(e) => setAddonDescription(e.target.value)}
+                placeholder="Ex: Fatia extra crocante"
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label}>PREÇO</label>
+              <div className={styles.moneyInput}>
+                <span className={styles.moneyPrefix}>R$</span>
+                <input
+                  className={styles.input}
+                  value={addonPrice}
+                  onChange={(e) => setAddonPrice(e.target.value)}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
+            <div className={styles.addonFormActions}>
               <button
-                className={styles.addonRemove}
+                className={styles.discard}
                 type="button"
-                onClick={() => removeAddon(a.id)}
-                aria-label="Remover"
+                onClick={() => {
+                  setAddonName("");
+                  setAddonDescription("");
+                  setAddonPrice("");
+                  setShowAddonForm(false);
+                }}
               >
-                <FiX />
+                Cancelar
+              </button>
+              <button className={styles.save} type="button" onClick={addAddon}>
+                Adicionar
               </button>
             </div>
-          ))}
+          </div>
+        )}
+
+        <div className={styles.addonsList}>
+          {addons.length ? (
+            addons.map((a) => (
+              <div key={a.id} className={styles.addonChip}>
+                <div className={styles.addonLeft}>
+                  <span className={styles.addonIcon}>+</span>
+                  <div>
+                    <div className={styles.addonName}>{a.name}</div>
+                    {a.description ? (
+                      <div className={styles.addonDesc}>{a.description}</div>
+                    ) : null}
+                    <div className={styles.addonPrice}>
+                      {currencyBRL(a.price)}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  className={styles.addonRemove}
+                  type="button"
+                  onClick={() => removeAddon(a.id)}
+                  aria-label="Remover"
+                >
+                  <FiX />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className={styles.addonsEmpty}>
+              Nenhum adicional vinculado a este produto.
+            </div>
+          )}
         </div>
       </div>
     </div>

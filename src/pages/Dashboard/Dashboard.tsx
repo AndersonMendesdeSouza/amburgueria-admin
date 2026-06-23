@@ -9,6 +9,12 @@ import {
   CartesianGrid,
 } from "recharts";
 import { FiDownload, FiCalendar, FiEye } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { OrderService } from "../../service/order.service";
+import type { OrderResponseDto } from "../../dtos/response/orders-response.dto";
+import type { OrderStatusEnum } from "../../dtos/enums/orders-status.enum";
+import { formatOrderCode } from "../../utils/formatOrderCode";
 
 type MetricCard = {
   label: string;
@@ -19,6 +25,7 @@ type MetricCard = {
 };
 
 type RecentSale = {
+  orderId: string;
   id: string;
   date: string;
   time: string;
@@ -26,7 +33,15 @@ type RecentSale = {
   clientName: string;
   products: string;
   total: string;
-  status: "CONCLUIDO" | "CANCELADO";
+  status: OrderStatusEnum;
+  statusLabel: string;
+  statusTone: "new" | "preparing" | "route" | "done" | "canceled";
+};
+
+type CustomTooltipProps = {
+  active?: boolean;
+  payload?: { value?: number | string }[];
+  label?: string;
 };
 
 const METRICS: MetricCard[] = [
@@ -52,8 +67,68 @@ const CHART_DATA = [
   { name: "DOM", value: 86 },
 ];
 
+function formatDate(date: string | Date): { date: string; time: string } {
+  const d = new Date(date);
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  
+  const formattedDate = `${d.getDate()} ${months[d.getMonth()]}`;
+  const formattedTime = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  
+  return { date: formattedDate, time: formattedTime };
+}
+
+function getInitials(name: string): string {
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function formatMoney(value: string | number): string {
+  return Number(value || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function getStatusInfo(status: OrderStatusEnum): {
+  label: string;
+  tone: RecentSale["statusTone"];
+} {
+  if (status === "RECEIVED") return { label: "NOVO", tone: "new" };
+  if (status === "KITCHEN_ACCEPTED" || status === "PREPARING") {
+    return { label: "EM PREPARO", tone: "preparing" };
+  }
+  if (status === "OUT_FOR_DELIVERY" || status === "ON_ROUTE") {
+    return { label: "EM ROTA", tone: "route" };
+  }
+  if (status === "DELIVERED") return { label: "CONCLUÍDO", tone: "done" };
+  if (status === "CANCELED") return { label: "CANCELADO", tone: "canceled" };
+  return { label: String(status), tone: "new" };
+}
+
+function mapOrderToRecentSale(order: OrderResponseDto): RecentSale {
+  const { date, time } = formatDate(order.createdAt);
+  const statusInfo = getStatusInfo(order.status);
+  const productsText = (order.items || [])
+    .map(item => `${item.quantity}x ${item.name}`)
+    .join(", ");
+
+  return {
+    orderId: order.id,
+    id: formatOrderCode(order.code),
+    date,
+    time,
+    client: { initials: getInitials(order.customerName) },
+    clientName: order.customerName,
+    products: productsText || "Sem itens",
+    total: formatMoney(order.total),
+    status: order.status,
+    statusLabel: statusInfo.label,
+    statusTone: statusInfo.tone,
+  };
+}
+
 const RECENT: RecentSale[] = [
   {
+    orderId: "88421",
     id: "#88421",
     date: "12 Out",
     time: "19:42",
@@ -61,9 +136,12 @@ const RECENT: RecentSale[] = [
     clientName: "Ricardo Mendes",
     products: "1x Bacon Deluxe, 1x Batata M",
     total: "R$ 54,90",
-    status: "CONCLUIDO",
+    status: "DELIVERED",
+    statusLabel: "CONCLUÍDO",
+    statusTone: "done",
   },
   {
+    orderId: "88428",
     id: "#88428",
     date: "12 Out",
     time: "19:30",
@@ -71,9 +149,12 @@ const RECENT: RecentSale[] = [
     clientName: "Amanda Silva",
     products: "2x Cheese Burger, 2x Coca-Cola",
     total: "R$ 82,00",
-    status: "CONCLUIDO",
+    status: "DELIVERED",
+    statusLabel: "CONCLUÍDO",
+    statusTone: "done",
   },
   {
+    orderId: "88419",
     id: "#88419",
     date: "12 Out",
     time: "19:25",
@@ -81,9 +162,12 @@ const RECENT: RecentSale[] = [
     clientName: "João Oliveira",
     products: "1x Smash Onion, 1x Suco Natural",
     total: "R$ 42,50",
-    status: "CANCELADO",
+    status: "CANCELED",
+    statusLabel: "CANCELADO",
+    statusTone: "canceled",
   },
   {
+    orderId: "88418",
     id: "#88418",
     date: "12 Out",
     time: "19:10",
@@ -91,7 +175,9 @@ const RECENT: RecentSale[] = [
     clientName: "Carla P.",
     products: "3x Combo Kids",
     total: "R$ 115,00",
-    status: "CONCLUIDO",
+    status: "DELIVERED",
+    statusLabel: "CONCLUÍDO",
+    statusTone: "done",
   },
 ];
 
@@ -102,17 +188,50 @@ function MetricIcon({ kind }: { kind: MetricCard["icon"] }) {
   return <span className={styles.metricIcon}>🏆</span>;
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
+  const value = Number(payload[0]?.value ?? 0);
   return (
     <div className={styles.tooltip}>
       <div className={styles.tooltipTitle}>{label}</div>
-      <div className={styles.tooltipValue}>R$ {Number(payload[0].value * 13).toFixed(2)}</div>
+      <div className={styles.tooltipValue}>R$ {(value * 13).toFixed(2)}</div>
     </div>
   );
 }
 
 export function Dashboard() {
+  const [recentSales, setRecentSales] = useState<RecentSale[]>(RECENT);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRecentOrders() {
+      try {
+        const orders = await OrderService.findAll();
+        if (!active) return;
+
+        const mapped = [...orders]
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          )
+          .map(mapOrderToRecentSale);
+
+        setRecentSales(mapped);
+      } catch (error) {
+        console.error("Erro ao carregar pedidos recentes:", error);
+        setRecentSales(RECENT);
+      }
+    }
+
+    void loadRecentOrders();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className={styles.page}>
       <div className={styles.top}>
@@ -232,7 +351,7 @@ export function Dashboard() {
             <div>AÇÕES</div>
           </div>
 
-          {RECENT.map((r) => (
+          {recentSales.map((r) => (
             <div key={r.id} className={styles.row}>
               <div className={styles.idCell}>{r.id}</div>
 
@@ -253,15 +372,20 @@ export function Dashboard() {
               <div>
                 <span
                   className={
-                    r.status === "CONCLUIDO" ? styles.statusOk : styles.statusBad
+                    `${styles.statusPill} ${styles[`status_${r.statusTone}`]}`
                   }
                 >
-                  {r.status}
+                  {r.statusLabel}
                 </span>
               </div>
 
               <div className={styles.actionsCell}>
-                <button className={styles.eyeBtn} type="button" aria-label="Ver">
+                <button
+                  className={styles.eyeBtn}
+                  type="button"
+                  aria-label="Ver"
+                  onClick={() => navigate(`/orders-details/${r.orderId}`)}
+                >
                   <FiEye />
                 </button>
               </div>
@@ -270,7 +394,10 @@ export function Dashboard() {
         </div>
 
         <div className={styles.tableFooter}>
-          <div className={styles.muted}>Mostrando 4 de 432 pedidos</div>
+          <div className={styles.muted}>
+            Mostrando {recentSales.length} de {recentSales.length} pedidos
+            recentes
+          </div>
 
           <div className={styles.pagination}>
             <button className={`${styles.pageBtn} ${styles.pageBtnActive}`} type="button">

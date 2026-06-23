@@ -335,7 +335,7 @@
   font-size: 12px;
 }
 
-.statusOk {
+.statusPill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -343,22 +343,37 @@
   border-radius: 999px;
   font-size: 10px;
   font-weight: 900;
+  white-space: nowrap;
+}
+
+.status_done {
   background: rgba(0, 200, 83, 0.12);
   color: #00c853;
   border: 1px solid rgba(0, 200, 83, 0.18);
 }
 
-.statusBad {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 900;
+.status_canceled {
   background: rgba(239, 68, 68, 0.12);
   color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
+.status_new {
+  background: rgba(255, 212, 0, 0.14);
+  color: #ffd400;
+  border: 1px solid rgba(255, 212, 0, 0.22);
+}
+
+.status_preparing {
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.24);
+}
+
+.status_route {
+  background: rgba(249, 115, 22, 0.14);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.24);
 }
 
 .actionsCell {

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./OrderDetails.module.css";
 import Colors from "../../themes/Colors";
@@ -6,8 +7,17 @@ import { OrderService } from "../../service/order.service";
 import type { OrderResponseDto } from "../../dtos/response/orders-response.dto";
 import type { OrderStatusEnum } from "../../dtos/enums/orders-status.enum";
 import type { PaymentMethodEnum } from "../../dtos/enums/payment-method.enum";
+import { formatOrderCode } from "../../utils/formatOrderCode";
 
 type TimelineStatus = "done" | "current" | "pending";
+
+type OrderDetailsCssVars = CSSProperties & {
+  "--bgPrimary": string;
+  "--bgSecondary": string;
+  "--textPrimary": string;
+  "--textSecondary": string;
+  "--highlight": string;
+};
 
 const statusLabel: Record<OrderStatusEnum, string> = {
   RECEIVED: "RECEBIDO",
@@ -138,12 +148,12 @@ export default function OrderDetails() {
   }, [order]);
 
   const pageStyle = {
-    ["--bgPrimary" as any]: Colors.Background.primary,
-    ["--bgSecondary" as any]: Colors.Background.secondary,
-    ["--textPrimary" as any]: Colors.Texts.primary,
-    ["--textSecondary" as any]: Colors.Texts.secondary,
-    ["--highlight" as any]: Colors.Highlight.primary,
-  } as React.CSSProperties;
+    "--bgPrimary": Colors.Background.primary,
+    "--bgSecondary": Colors.Background.secondary,
+    "--textPrimary": Colors.Texts.primary,
+    "--textSecondary": Colors.Texts.secondary,
+    "--highlight": Colors.Highlight.primary,
+  } as OrderDetailsCssVars;
 
   if (isLoading) {
     return (
@@ -195,7 +205,7 @@ export default function OrderDetails() {
 
           <div className={styles.topbarTitleWrap}>
             <div className={styles.titleRow}>
-              <h1 className={styles.title}>Pedido #{order.code}</h1>
+              <h1 className={styles.title}>Pedido {formatOrderCode(order.code)}</h1>
               <span className={styles.statusPill}>
                 {statusLabel[order.status] || order.status}
               </span>

@@ -54,7 +54,7 @@ export function OrderCard({
     <div className={styles.card} onClick={() => navigate(navigateTo)}>
       <div className={styles.header}>
         <div className={styles.left}>
-          <div className={styles.orderNumber}>#{orderNumber}</div>
+          <div className={styles.orderNumber}>{orderNumber}</div>
           <div className={styles.customerName}>{customerName}</div>
         </div>
 

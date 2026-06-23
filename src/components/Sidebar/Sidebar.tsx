@@ -10,9 +10,11 @@ import styles from "./Sidebar.module.css";
 import { FileBarChart2Icon } from "lucide-react";
 import { IoExitOutline } from "react-icons/io5";
 import { useAuth } from "../../contexts/AuthContext";
+import { useOrderCount } from "../../contexts/OrderCountContext";
 
 export function Sidebar() {
   const { logout } = useAuth();
+  const { totalOrders } = useOrderCount();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -22,6 +24,8 @@ export function Sidebar() {
     // 2️⃣ Redireciona para login
     navigate("/login");
   }
+
+  
   return (
     <aside className={styles.sidebar}>
       <div>
@@ -52,7 +56,7 @@ export function Sidebar() {
           >
             <FiShoppingCart className={styles.icon} />
             <span>Pedidos</span>
-            <span className={styles.badge}>12</span>
+            <span className={styles.badge}>{totalOrders}</span>
           </NavLink>
 
           <NavLink

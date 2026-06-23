@@ -127,7 +127,6 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-width: 116px;
   justify-content: center;
   box-shadow: 0px 1px 1px rgba(255, 212, 0, 0.9);;
 }
@@ -143,7 +142,6 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-width: 116px;
   justify-content: center;
   box-shadow:0px 1px 1px rgba(59, 130, 246, 0.9);
 }
@@ -159,7 +157,6 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-width: 116px;
   justify-content: center;
   box-shadow: 0px 1px 1px  rgba(249, 115, 22, 0.95);
 }

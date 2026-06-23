@@ -5,6 +5,7 @@ import { FiMoreHorizontal } from "react-icons/fi";
 import { OrderCard } from "../../components/OrderCard";
 import { useEffect, useState } from "react";
 import { OrderService } from "../../service/order.service";
+import { formatOrderCode } from "../../utils/formatOrderCode";
 
 type BoardOrder = {
   id: string;
@@ -71,7 +72,7 @@ function getBoardStatus(status: OrderResponseDto["status"]): OrderStatusEnum {
 function mapOrderToBoardOrder(order: OrderResponseDto): BoardOrder {
   return {
     id: order.id,
-    number: String(order.code),
+    number: formatOrderCode(order.code),
     customerName: order.customerName,
     minutes: getMinutesAgo(order.createdAt),
     total: Number(order.total),
@@ -113,15 +114,24 @@ export function Orders() {
   const [orders, setOrders] = useState<BoardOrder[]>([]);
 
   useEffect(() => {
+    let active = true;
+
     async function loadOrders() {
-      const data = await OrderService.findAll();
-      setOrders(data.map(mapOrderToBoardOrder));
+      try {
+        const data = await OrderService.findAll();
+        if (!active) return;
+
+        setOrders(data.map(mapOrderToBoardOrder));
+      } catch (error) {
+        console.error("Erro ao carregar pedidos:", error);
+      }
     }
 
-    loadOrders();
+    void loadOrders();
     const intervalId = window.setInterval(loadOrders, 10000);
 
     return () => {
+      active = false;
       window.clearInterval(intervalId);
     };
   }, []);

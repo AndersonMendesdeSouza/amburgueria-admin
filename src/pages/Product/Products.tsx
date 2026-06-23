@@ -84,7 +84,7 @@ export function Products() {
         setError(null);
         const data = await ProductService.findAll();
         setProducts(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
         setError("Erro ao carregar produtos");
       } finally {
